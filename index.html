@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gmail Inbox/Spam Checker</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    <h2>Gmail Inbox/Spam Checker</h2>
+    <h3>Receiver Emails:</h3>
+    <ul id="receiver-list"></ul>
+
+    <form id="check-form">
+      <h3>
+        <label for="sender_email">Sender Email:</label>
+        <input id="sender_email" name="sender_email" type="email" required />
+        <button type="submit">Check</button>
+      </h3>
+    </form>
+
+    <div id="loading" style="display:none;">Checking...</div>
+
+    <div id="stats" style="display:none;">
+      <p><strong>Inbox:</strong> <span id="inbox-count">0</span> |
+         <strong>Spam:</strong> <span id="spam-count">0</span> |
+         <strong>Total Checked:</strong> <span id="total-count">0</span> |
+         <strong>Total Inbox:</strong> <span id="inbox-ratio">0%</span></p>
+    </div>
+
+    <table id="result-table" style="display:none;">
+      <thead>
+        <tr>
+          <th>Receiver Email</th>
+          <th>Folder</th>
+          <th>Subject</th>
+          <th>Delivery Time</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    async function loadReceivers() {
+      const res = await fetch('/api/receivers');
+      const data = await res.json();
+      const list = document.getElementById('receiver-list');
+      list.innerHTML = '';
+      data.receivers.forEach(email => {
+        const li = document.createElement('li');
+        li.textContent = email;
+        list.appendChild(li);
+      });
+    }
+    loadReceivers();
+
+    document.getElementById('check-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const sender = document.getElementById('sender_email').value;
+      const receivers = Array.from(document.querySelectorAll('#receiver-list li')).map(li => li.textContent);
+
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('stats').style.display = 'none';
+      document.getElementById('result-table').style.display = 'none';
+
+      const response = await fetch('/api/checkEmail', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sender, receivers })
+      });
+
+      const data = await response.json();
+      document.getElementById('loading').style.display = 'none';
+
+      let inbox = 0, spam = 0;
+      const tbody = document.querySelector('#result-table tbody');
+      tbody.innerHTML = '';
+
+      data.results.forEach(r => {
+        if (r.folder === 'inbox') inbox++;
+        else if (r.folder === 'spam') spam++;
+
+        const row = `<tr>
+          <td>${r.email}</td>
+          <td>${r.folder}</td>
+          <td>${r.subject}</td>
+          <td>${r.time}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+      });
+
+      const total = inbox + spam;
+      const inboxPercent = total ? Math.round((inbox / total) * 100) : 0;
+
+      document.getElementById('inbox-count').textContent = inbox;
+      document.getElementById('spam-count').textContent = spam;
+      document.getElementById('total-count').textContent = total;
+      document.getElementById('inbox-ratio').textContent = `${inboxPercent}%`;
+
+      document.getElementById('stats').style.display = 'block';
+      document.getElementById('result-table').style.display = 'table';
+    });
+  </script>
+</body>
+</html>
