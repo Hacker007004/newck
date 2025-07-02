@@ -3,6 +3,6 @@
   "type": "module",
   "dependencies": {
     "imap-simple": "^6.0.0",
-    "mailparser": "^3.9.0"
+    "mailparser": "^3.7.2"
   }
 }
